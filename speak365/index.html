@@ -697,10 +697,13 @@ function initRemote(){
 }
 
 /* ---------- offline (app version only) ---------- */
-var OFF={ready:false};
+var OFF={ready:false,fresh:false};
 function standalone(){try{return navigator.standalone===true||window.matchMedia("(display-mode: standalone)").matches}catch(e){return false}}
 function initOffline(){
   if(!PWA||!("serviceWorker" in navigator))return;
+  var had=!!navigator.serviceWorker.controller;
+  /* a newer version took over while this page was open: show it as soon as no drill is running */
+  navigator.serviceWorker.addEventListener("controllerchange",function(){if(!had)return;if(S&&S.on)OFF.fresh=true;else location.reload()});
   navigator.serviceWorker.register("sw.js").then(function(){return navigator.serviceWorker.ready}).then(function(){OFF.ready=true;renderSync()}).catch(function(){});
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 }
@@ -1128,6 +1131,7 @@ function endSession(){
   if(!S)return;S.on=false;S=null;$("sheet").hidden=true;document.body.style.overflow="";
   try{speechSynthesis.cancel()}catch(e){}
   if(R.pending){var r=R.pending;R.pending=null;takeRemote(r)}
+  if(OFF.fresh){location.reload();return}
   renderAll();
 }
 function itemTag(it){
